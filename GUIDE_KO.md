@@ -6,6 +6,24 @@ AI 코딩 에이전트(Claude Code)가 1Password를 통해 비밀 정보를 **�
 
 ---
 
+## 동작 원리(아키텍처 다이어그램)
+
+```mermaid
+flowchart TD
+    A[Claude Code 세션] -->|OP_SERVICE_ACCOUNT_TOKEN 자동 주입| B[op CLI]
+    B -->|서비스 계정 토큰| C[(1Password 'Claude Code' 볼트)]
+    C -. 이 ID가 볼 수 있는 유일한 볼트 .- D[다른 볼트 ✗]
+    B -. 선택 사항 .-> E[1Password SSH Agent]
+    E -. ssh/git에 키 제공 .-> F[Orange Pi / NAS / Git]
+```
+
+**범례:**
+- `op CLI`는 **Claude Code** 볼트를 읽고 씁니다 — 데스크톱 앱 불필요
+- 서비스 계정은 다른 볼트를 **절대 볼 수 없습니다**
+- SSH Agent(선택)는 키를 `ssh`/`git`에 직접 제공합니다
+
+---
+
 ## 빠른 시작
 
 ### 1. 서비스 계정 생성

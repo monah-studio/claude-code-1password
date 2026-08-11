@@ -6,6 +6,24 @@
 
 ---
 
+## 工作原理(架构图)
+
+```mermaid
+flowchart TD
+    A[Claude Code 会话] -->|自动注入 OP_SERVICE_ACCOUNT_TOKEN| B[op CLI]
+    B -->|服务账号 token| C[(1Password 'Claude Code' 保险库)]
+    C -. 该身份唯一可见的库 .- D[其它保险库 ✗]
+    B -. 可选 .-> E[1Password SSH Agent]
+    E -. 向 ssh/git 提供密钥 .-> F[Orange Pi / NAS / Git]
+```
+
+**图例:**
+- `op CLI` 读写 **Claude Code** 保险库 —— 无需桌面 App
+- 服务账号**永远看不到**其它保险库
+- SSH Agent(可选)直接向 `ssh`/`git` 提供密钥
+
+---
+
 ## 快速开始
 
 ### 1. 创建服务账号

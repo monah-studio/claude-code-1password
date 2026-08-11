@@ -6,6 +6,24 @@ Give your AI coding agent (Claude Code) secure, **silent** access to your secret
 
 ---
 
+## How it works (diagram) / 架构图
+
+```mermaid
+flowchart TD
+    A[Claude Code session] -->|auto-injects OP_SERVICE_ACCOUNT_TOKEN| B[op CLI]
+    B -->|Service Account token| C[(1Password 'Claude Code' vault)]
+    C -. only vault this identity can see .- D[Other vaults ✗]
+    B -. optional .-> E[1Password SSH Agent]
+    E -. provides SSH keys to ssh/git .-> F[Orange Pi / NAS / Git]
+```
+
+**Legend / 图例:**
+- `op CLI` reads/writes the **Claude Code** vault — no desktop app needed
+- The Service Account can **never** see other vaults
+- SSH Agent (optional) feeds keys to `ssh`/`git` directly
+
+---
+
 ## Quickstart
 
 ### 1. Create a Service Account

@@ -6,6 +6,24 @@ AI コーディングエージェント(Claude Code)に 1Password 経由で秘�
 
 ---
 
+## 動作の仕組み(アーキテクチャ図)
+
+```mermaid
+flowchart TD
+    A[Claude Code セッション] -->|OP_SERVICE_ACCOUNT_TOKEN を自動注入| B[op CLI]
+    B -->|サービスアカウントトークン| C[(1Password 'Claude Code' ボールト)]
+    C -. このIDが見える唯一のボールト .- D[他のボールト ✗]
+    B -. オプション .-> E[1Password SSH Agent]
+    E -. ssh/git に鍵を提供 .-> F[Orange Pi / NAS / Git]
+```
+
+**凡例:**
+- `op CLI` は **Claude Code** ボールトを読み書き — デスクトップアプリ不要
+- サービスアカウントは他のボールトを**絶対に見られない**
+- SSH Agent(オプション)は鍵を直接 `ssh`/`git` に提供
+
+---
+
 ## クイックスタート
 
 ### 1. サービスアカウントを作成
