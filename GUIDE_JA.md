@@ -117,5 +117,26 @@ op item list --vault="Claude Code"
 
 ---
 
+## 公式リファレンス
+
+**1password.com(製品 / コンソール)**
+- 1Password ホーム: <https://1password.com>
+- 1Password ウェブコンソール(サービスアカウント作成・ポリシー管理): <https://my.1password.com>
+- 1Password サービスアカウントドキュメント: <https://developer.1password.com/docs/service-accounts/>
+
+**1password.dev(開発者ドキュメント)**
+- CLI クイックスタート(インストール、`op`、デスクトップ連携): <https://www.1password.dev/cli/get-started/>
+- **デスクトップ連携セキュリティ — 10分のアイドル / 12時間のハードリミット(公式)**: <https://www.1password.dev/cli/app-integration-security>
+  > "Authorization expires after 10 minutes of inactivity in the terminal session. There's a **hard limit of 12 hours**, after which you must reauthorize."
+  > (承認はターミナルでの10分の非アクティブ後に失効します。**12時間のハードリミット**があり、その後は再認証が必要です。)
+  > デスクトップ(Touch ID)方式が頻繁に承認を求める理由はここにあります:12時間制限は**変更不可**です。回避できるのはサービスアカウントのみ。
+- SSH & Git(1Password SSH Agent 概要): <https://www.1password.dev/ssh>
+- SSH Agent セットアップ: <https://www.1password.dev/ssh/agent/>
+- SSH Agent 設定ファイル(`agent.toml`、カスタムボールト): <https://www.1password.dev/ssh/agent/config/>
+- MCP サーバー(1Password Environments — 書き込みのみ、値は読めない): <https://www.1password.dev/environments/mcp-server>
+- Agentic Autofill(Browserbase 連携、別機能): <https://www.1password.dev/agentic-autofill>
+
+---
+
 ## ライセンス
 MIT — ドキュメント/テンプレートのみ。秘密情報なし。

@@ -117,5 +117,25 @@ RULES:
 
 ---
 
+## Official references / 官方参考
+
+**1password.com (product / console)**
+- 1Password home: <https://1password.com>
+- 1Password web console (create Service Accounts, manage policies): <https://my.1password.com>
+- 1Password Service Accounts docs: <https://developer.1password.com/docs/service-accounts/>
+
+**1password.dev (developer docs)**
+- CLI get started (install, `op`, integrate with desktop app): <https://www.1password.dev/cli/get-started/>
+- **App integration security — the 10-minute idle / 12-hour hard limit**: <https://www.1password.dev/cli/app-integration-security>
+  > "Authorization expires after 10 minutes of inactivity in the terminal session. There's a **hard limit of 12 hours**, after which you must reauthorize."
+  > This is why the desktop-app (Touch ID) path keeps asking: the 12-hour cap is **not configurable**. Only a Service Account token bypasses it.
+- SSH & Git (1Password SSH Agent overview): <https://www.1password.dev/ssh>
+- SSH Agent setup: <https://www.1password.dev/ssh/agent/>
+- SSH Agent config file (`agent.toml`, custom vaults): <https://www.1password.dev/ssh/agent/config/>
+- MCP server (1Password Environments — writes only, cannot read values): <https://www.1password.dev/environments/mcp-server>
+- Agentic Autofill (Browserbase pairing, separate feature): <https://www.1password.dev/agentic-autofill>
+
+---
+
 ## License
 MIT — documentation/template only. No secrets.

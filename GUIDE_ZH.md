@@ -117,5 +117,26 @@ op item list --vault="Claude Code"
 
 ---
 
+## 官方参考链接
+
+**1password.com(产品 / 控制台)**
+- 1Password 官网: <https://1password.com>
+- 1Password 网页控制台(创建服务账号、管理策略): <https://my.1password.com>
+- 1Password 服务账号文档: <https://developer.1password.com/docs/service-accounts/>
+
+**1password.dev(开发者文档)**
+- CLI 快速开始(安装、`op`、桌面集成): <https://www.1password.dev/cli/get-started/>
+- **桌面集成安全 —— 10 分钟空闲 / 12 小时硬上限的官方出处**: <https://www.1password.dev/cli/app-integration-security>
+  > "Authorization expires after 10 minutes of inactivity in the terminal session. There's a **hard limit of 12 hours**, after which you must reauthorize."
+  > (授权在终端空闲 10 分钟后过期;有 **12 小时硬上限**,之后必须重新授权。)
+  > 这就是为什么桌面(Touch ID)模式老是要你批准:12 小时上限**不可配置**。只有 Service Account token 能绕过。
+- SSH & Git(1Password SSH Agent 概览): <https://www.1password.dev/ssh>
+- SSH Agent 设置: <https://www.1password.dev/ssh/agent/>
+- SSH Agent 配置文件(`agent.toml`,自定义保险库): <https://www.1password.dev/ssh/agent/config/>
+- MCP 服务器(1Password Environments —— 只能写、不能读值): <https://www.1password.dev/environments/mcp-server>
+- Agentic Autofill(Browserbase 配对,独立功能): <https://www.1password.dev/agentic-autofill>
+
+---
+
 ## 许可证
 MIT —— 仅文档/模板,不含密钥。

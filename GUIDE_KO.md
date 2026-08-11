@@ -117,5 +117,26 @@ op item list --vault="Claude Code"
 
 ---
 
+## 공식 참조 링크
+
+**1password.com(제품 / 콘솔)**
+- 1Password 홈: <https://1password.com>
+- 1Password 웹 콘솔(서비스 계정 생성, 정책 관리): <https://my.1password.com>
+- 1Password 서비스 계정 문서: <https://developer.1password.com/docs/service-accounts/>
+
+**1password.dev(개발자 문서)**
+- CLI 빠른 시작(설치, `op`, 데스크톱 통합): <https://www.1password.dev/cli/get-started/>
+- **앱 통합 보안 — 10분 유휴 / 12시간 하드 리밋(공식)**: <https://www.1password.dev/cli/app-integration-security>
+  > "Authorization expires after 10 minutes of inactivity in the terminal session. There's a **hard limit of 12 hours**, after which you must reauthorize."
+  > (승인은 터미널에서 10분간 비활성 상태가 되면 만료됩니다. **12시간 하드 리밋**이 있으며, 이후 재인증이 필요합니다.)
+  > 데스크톱(Touch ID) 방식이 계속 승인을 요구하는 이유입니다: 12시간 제한은 **변경 불가**입니다. 우회할 수 있는 건 서비스 계정뿐입니다.
+- SSH & Git(1Password SSH Agent 개요): <https://www.1password.dev/ssh>
+- SSH Agent 설정: <https://www.1password.dev/ssh/agent/>
+- SSH Agent 설정 파일(`agent.toml`, 커스텀 볼트): <https://www.1password.dev/ssh/agent/config/>
+- MCP 서버(1Password Environments — 쓰기만, 값 읽기 불가): <https://www.1password.dev/environments/mcp-server>
+- Agentic Autofill(Browserbase 페어링, 별도 기능): <https://www.1password.dev/agentic-autofill>
+
+---
+
 ## 라이선스
 MIT — 문서/템플릿 전용. 비밀 없음.
