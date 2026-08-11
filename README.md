@@ -66,5 +66,8 @@ You have secure access to 1Password via the `op` CLI (NOT the MCP server — it 
 
 > ⚠️ **No secrets in this repo / 本仓库不含任何密钥 / このリポジトリに秘密情報は含まれません / 이 리포지토리에는 비밀이 없습니다.**
 
-## License / 许可证 / ライセンス / 라이선스
-MIT — documentation/template only.
+## 📄 License & Credits / 许可证与致谢 / ライセンスとクレジット / 라이선스 및 크레딧
+
+- **License:** [MIT](LICENSE)
+- **Credits & disclaimer:** [CREDITS.md](CREDITS.md) (unofficial community guide, not affiliated with 1Password/Anthropic)
+- **Author:** [Monah Studio](https://monah.ai) · <https://github.com/monah-studio>
