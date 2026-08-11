@@ -1,25 +1,40 @@
 # claude-code-1password
 
-Connect **1Password** to **Claude Code** (and Claude Cowork) so that Claude can read and write credentials in a dedicated **"Claude Code" vault** — 24/7, no desktop-app unlock required, no repeated approval prompts.
+Connect **1Password** to **Claude Code** so Claude can read/write credentials in a dedicated **"Claude Code" vault** — 24/7, no desktop-app unlock required, no repeated approval prompts.
 
-> ⚠️ **No secrets in this repo.** Everything here is a template. All real tokens are placeholders like `<YOUR_SERVICE_ACCOUNT_TOKEN>`.
+This repo is a **field guide**: not just *how* to set it up, but the **real problems we hit** while doing it (and what we'd do differently). No secrets anywhere — all tokens are placeholders like `<YOUR_SERVICE_ACCOUNT_TOKEN>`.
+
+> ⚠️ **No secrets in this repo.** Everything here is a template.
 
 ---
 
 ## Table of Contents
 
-1. [How it works](#how-it-works)
-2. [Prerequisites](#prerequisites)
-3. [Part A — Create the Service Account](#part-a--create-the-service-account)
-4. [Part B — Install & verify the `op` CLI](#part-b--install--verify-the-op-cli)
-5. [Part C — Configure Claude Code (global)](#part-c--configure-claude-code-global)
-6. [Part D — Permission allowlist](#part-d--permission-allowlist)
-7. [Part E — Verify end-to-end](#part-e--verify-end-to-end)
-8. [Part F — Claude Cowork (optional)](#part-f--claude-cowork-optional)
-9. [Daily usage — a skill that "just works"](#daily-usage--a-skill-that-just-works)
-10. [Troubleshooting](#troubleshooting)
-11. [Security notes](#security-notes)
-12. [Credential index](#credential-index-template)
+1. [Why this exists](#why-this-exists)
+2. [How it works](#how-it-works)
+3. [Prerequisites](#prerequisites)
+4. [Setup](#setup)
+   - [Part A — Create the Service Account](#part-a--create-the-service-account)
+   - [Part B — Install & verify `op`](#part-b--install--verify-the-op-cli)
+   - [Part C — Configure Claude Code (global)](#part-c--configure-claude-code-global)
+   - [Part D — Permission allowlist](#part-d--permission-allowlist)
+   - [Part E — Verify end-to-end](#part-e--verify-end-to-end)
+   - [Part F — SSH Agent (bonus)](#part-f--ssh-agent-bonus)
+5. [Pitfalls we hit (the real lessons)](#pitfalls-we-hit-the-real-lessons)
+6. [Pros & cons](#pros--cons)
+7. [Security notes](#security-notes)
+8. [Credential index template](#credential-index-template)
+
+---
+
+## Why this exists
+
+We wanted Claude Code to **silently read/write our secrets** without:
+- manual copy-paste of API keys into each session,
+- desktop-app unlock prompts every few minutes,
+- "I don't have the token" whiplash across different chats.
+
+The **`1password-mcp` MCP server** looked like the answer but turned out to be the wrong tool. The **`op` CLI + Service Account** is the reliable path. This is the journey and the final setup.
 
 ---
 
@@ -27,11 +42,12 @@ Connect **1Password** to **Claude Code** (and Claude Cowork) so that Claude can 
 
 | Layer | What it does | Why it matters |
 |---|---|---|
-| **1Password desktop app** | Holds your vaults, unlocked by you | The source of truth for secrets |
-| **Service Account** | A machine identity with a token, scoped to ONE vault | Lets `op` read/write without the app being unlocked |
+| **1Password desktop app** | Holds your vaults | Source of truth for secrets |
+| **Service Account** | Machine identity, token scoped to ONE vault | Lets `op` work without the app being unlocked |
 | **`op` CLI** | Command-line interface to 1Password | What Claude actually runs |
-| **`OP_SERVICE_ACCOUNT_TOKEN`** env var | Global env in Claude Code settings | Injected into every session automatically |
-| **`permissions.allow`** | Claude Code permission allowlist | Lets `op` run without approval prompts |
+| **`OP_SERVICE_ACCOUNT_TOKEN`** env var | Injected into every Claude session | Authentication for `op` |
+| **`permissions.allow`** | Claude Code allowlist | No approval prompts for `op` |
+| **SSH Agent** (optional) | 1Password provides SSH keys to `ssh`/`git` | No local private-key files needed |
 
 ```
 Claude Code session
@@ -41,63 +57,52 @@ op CLI ──Service Account token──▶ 1Password "Claude Code" vault
                                     (the ONLY vault this identity can see)
 ```
 
-Because authentication goes through the **Service Account token** (not the desktop app), the CLI works even when the 1Password app is locked or closed. That is what makes it "24/7".
-
-> ❌ **Do NOT rely on the `1password-mcp` MCP server.** It can only *write* Environments (a developer feature), cannot *read* secret values back, and requires desktop-app approval that often hangs on "Pending approval". The `op` CLI is the reliable path.
+Because auth goes through the **Service Account token** (not the desktop app), the CLI works even when the app is locked or closed.
 
 ---
 
 ## Prerequisites
 
 - macOS / Linux / Windows with a [1Password account](https://1password.com)
-- [1Password desktop app](https://1password.com/downloads) installed (for creating the vault & Service Account, and optional browser autofill)
-- [1Password CLI](https://developer.1password.com/docs/cli/get-started) (`op`) installed
-- [Claude Code](https://code.claude.com) installed and authenticated
-- [GitHub CLI](https://cli.github.com) (`gh`) — only needed for [Part F / repo upload]
+- [1Password desktop app](https://1password.com/downloads)
+- [1Password CLI](https://developer.1password.com/docs/cli/get-started) (`op`)
+- [Claude Code](https://code.claude.com)
+- (optional) [GitHub CLI](https://cli.github.com) for the repo part
 
 ---
 
-## Part A — Create the Service Account
+## Setup
 
-1. Go to <https://my.1password.com> → **Service Accounts**.
-2. **Create Service Account**, name it e.g. `Claude AI Agent`.
-3. Under **Vault access**, select **only** the vault you want Claude to use — e.g. `Claude Code`. (This is the security boundary: the token can *never* see your other vaults.)
-4. Create it, and **copy the token** (shown once, starts with `ops_`).
+### Part A — Create the Service Account
 
-Store the token safely (it is your authentication credential):
+1. <https://my.1password.com> → **Service Accounts** → **Create Service Account**
+2. Name it (e.g. `Claude AI Agent`)
+3. Under **Vault access**, select **only** the vault Claude should use (e.g. `Claude Code`). This is the security boundary.
+4. Copy the token (shown once, starts `ops_`).
+
+Back it up inside the vault itself:
 
 ```bash
 op item create --vault="Claude Code" \
   --category="API Credential" \
   --title="Service Account Auth Token: Claude AI Agent" \
   credential="<YOUR_SERVICE_ACCOUNT_TOKEN>" \
-  notes="1Password Service Account token for Claude. Rotate in my.1password.com."
+  notes="Recovery copy — rotate in my.1password.com if exposed."
 ```
 
-> 💡 Keeping a copy of the token *inside* the vault it grants access to is a deliberate recovery pattern: if the env config is ever wiped, you can recover it with `op item get`.
+> 💡 Keeping a token copy *inside the vault it grants* is a deliberate recovery pattern: if the env config is wiped, `op item get` can restore it.
 
----
-
-## Part B — Install & verify the `op` CLI
+### Part B — Install & verify `op`
 
 ```bash
-# macOS (Homebrew)
 brew install --cask 1password-cli
-
-# verify
 op --version
-op account list          # should list your account, e.g. <your>.1password.com
+op account list   # should show your account
 ```
 
-> Note: with a Service Account token set, `op` authenticates via the token and does **not** need the desktop app unlocked.
+### Part C — Configure Claude Code (global)
 
----
-
-## Part C — Configure Claude Code (global)
-
-Add the token to **global** Claude Code settings so every session in every directory inherits it.
-
-File: `~/.claude/settings.json`
+`~/.claude/settings.json`:
 
 ```json
 {
@@ -107,15 +112,11 @@ File: `~/.claude/settings.json`
 }
 ```
 
-(Keep your existing `env` keys; just add this one.)
+> ⚠️ This file now holds a live token. Never commit/sync/share it.
 
-> ⚠️ This file now contains a live token. Do **not** commit it, sync it to cloud drives, or share it. It is a *local runtime* requirement.
+### Part D — Permission allowlist
 
----
-
-## Part D — Permission allowlist
-
-Still in `~/.claude/settings.json`, add a `permissions` block so `op` read/write commands run **without approval prompts**. All rules are scoped to the `Claude Code` vault.
+Same file, add `permissions` so `op` runs without prompts. All scoped to `Claude Code` vault:
 
 ```json
 {
@@ -146,124 +147,114 @@ Still in `~/.claude/settings.json`, add a `permissions` block so `op` read/write
 }
 ```
 
-> **Order matters for `op` commands** — put `--vault="Claude Code"` *before* the item title so the allowlist glob matches. See [Troubleshooting → allowlist](#allowlist-rules-not-matching).
+> **Order matters:** put `--vault="Claude Code"` *before* the item title, or the glob won't match.
 
-> 🔒 Write commands (`create`/`edit`) are included here deliberately, scoped only to the `Claude Code` vault. Because the Service Account cannot see any other vault, this does not expose your personal vaults.
-
----
-
-## Part E — Verify end-to-end
+### Part E — Verify end-to-end
 
 ```bash
-# 1. Confirm the token is picked up
-op whoami
-#   URL: https://<your>.1password.com
-#   User Type: SERVICE_ACCOUNT
-
-# 2. Confirm the vault is reachable
-op vault list
-
-# 3. Confirm only the intended vault is visible
+op whoami                 # User Type: SERVICE_ACCOUNT
 op item list --vault="Claude Code"
-
-# 4. (Negative test) confirm OTHER vaults are NOT visible
-op item list --vault="Personal"        # → should error: not a vault in this account
+op item list --vault="Personal"   # should ERROR — scope is enforced
 ```
 
-Expected result: `op` works without any desktop-app unlock, and can only see the `Claude Code` vault.
+### Part F — SSH Agent (bonus)
+
+Let 1Password provide SSH keys (so local `~/.ssh` private files can be removed):
+
+1. 1Password App → **Settings → Developer → Use the SSH Agent** (must be ON)
+2. Store keys as **SSH Key** item type (Ed25519/RSA) in the vault
+3. SSH agent only reads **Personal/Private/Employee** vaults by default. For a custom vault like `Claude Code`, create `~/.config/1Password/ssh/agent.toml`:
+
+```toml
+[[ssh-keys]]
+item = "SSH Key - My Pi"
+vault = "Claude Code"
+account = "<your>.1password.com"
+```
+
+4. `SSH_AUTH_SOCK` should point at the 1Password agent socket. Verify: `ssh-add -l`
 
 ---
 
-## Part F — Claude Cowork (optional)
+## Pitfalls we hit (the real lessons)
 
-Claude Cowork is a separate agentic environment. Two things to know:
+These are the things that cost us time. Read before you start.
 
-- **It does not automatically read `~/.claude/settings.json`.** If Cowork needs 1Password access, the token must be injected into *its* environment separately (its own env config / launch environment).
-- If you don't need Cowork to read secrets, tell it plainly: *"Do not use 1Password / op; I'll provide credentials."*
+### 1. The MCP server looks right but is useless
+`1password-mcp` **cannot return secret values** — by design. It only manages *Environments* (a developer feature) and writes. We configured it, it sat at "⏸ Pending approval", and it can never read a password back. **Use `op` CLI, not the MCP server.**
 
-> For fully automated browser *login* flows inside a headless agent, see 1Password's separate **Agentic Autofill** (Browserbase pairing) — that is a different feature from CLI vault access and not covered here.
-
----
-
-## Daily usage — a skill that "just works"
-
-Install a global Claude skill so any session triggers on "1password" / "取密码" / "save a key":
-
+### 2. `op` uses `username=`/`password=`, not `--username`
+Newer `op` rejects `--username`/`--password` flags (`unknown flag`). Use assignment syntax:
 ```bash
-mkdir -p ~/.claude/skills/1password
+op item create --category=login ... username="u" password="p"
 ```
 
-`~/.claude/skills/1password/SKILL.md`:
+### 3. The desktop-app 12-hour limit is NOT configurable
+Every new terminal window + 10-min inactivity + hard 12-hour cap → reauthorize with Touch ID. There is **no setting** to raise it (verified against official docs). Only a **Service Account token** bypasses this entirely.
 
-```markdown
----
-name: 1password
-description: Read/write credentials in the 1Password "Claude Code" vault via the op CLI.
-  Triggers on "1password", "取密码", "存 key", "credential", "secret".
----
+### 4. Service Accounts can be silently deleted
+Our first SA hit `403 Service Account Deleted` out of nowhere (revoked in the web console). The token in `.zshenv` became dead instantly. **Fix:** keep the recovery copy in the vault, and know how to recreate fast.
 
-# 1Password — credential access
+### 5. Another tool can wipe your `settings.json`
+We run **CC Switch** (a model/provider switcher) that *rewrites* `~/.claude/settings.json`, silently dropping our `OP_SERVICE_ACCOUNT_TOKEN` and `permissions`. This was the cause of repeated "suddenly needs auth again". **Fix:** also put the token in `~/.zshenv` (shell env, outside settings.json) so it survives.
 
-Use `op` CLI (NOT the MCP server). Put `--vault="Claude Code"` BEFORE the item title
-so the allowlist matches.
+### 6. The allowlist glob is brittle
+`Bash(op item get * --vault="Claude Code" *)` matches only if the literal `--vault="Claude Code"` segment appears exactly. Argument order/quoting changes break it. **Fix:** standardize `op item get --vault="Claude Code" "<title>"` (vault first).
 
-Read:   op item get --vault="Claude Code" "<TITLE>" --fields <field> --reveal
-List:   op item list --vault="Claude Code"
-Create: op item create --vault="Claude Code" --category="API Credential" \
-          --title="<TITLE>" credential="<VALUE>" notes="<NOTE>"
-Edit:   op item edit --vault="Claude Code" "<TITLE>" field=value
+### 7. SSH `IdentitiesOnly=yes` made agent auth "fail"
+The 1Password SSH agent key was fine, but forcing `IdentitiesOnly=yes` caused `Permission denied`. Removing it, the agent key worked. Don't over-constrain SSH.
 
-Syntax: use assignment (`username=x`, `password=y`, `credential=z`), NOT `--username` flags.
-Vault:  "Claude Code" only. Service Account scopes access to this vault.
-```
+### 8. The SSH agent only sees default vaults
+Keys in a custom vault (`Claude Code`) are invisible to the agent until you write `~/.config/1Password/ssh/agent.toml` with `[[ssh-keys]]` entries. (`[[vaults]]` is the wrong header — we learned that too.)
 
-After creating the skill, **restart the session** so it loads.
+### 9. "Authorization timeout" when reading a token
+`op item get` sometimes times out because the desktop-app approval never completed (app locked). Unlock the app, then retry.
+
+### 10. Permissions vs approvals — two layers
+Claude Code's allowlist stops *Claude* from asking. But **1Password itself** may still prompt (Touch ID / app unlock). Service Account removes the 1Password layer too.
 
 ---
 
-## Troubleshooting
+## Pros & cons
 
-### `op` says "No accounts configured" / "account is not signed in"
-- The `OP_SERVICE_ACCOUNT_TOKEN` is not injected into *this* session.
-- Check: `env | grep OP_SERVICE_ACCOUNT_TOKEN`
-- The token lives in `~/.claude/settings.json` env — new sessions load it. If missing, re-add it (or restore from your vault copy).
+**Pros**
+- ✅ Zero prompts once configured (Service Account)
+- ✅ Works even if the 1Password app is locked/closed
+- ✅ One vault scope = small blast radius
+- ✅ SSH Agent means no local private-key files
+- ✅ Same setup serves many sessions/directories
 
-### Allowlist rules not matching
-- Argument order matters. Use `op item get --vault="Claude Code" "<TITLE>"` (vault first), not `<TITLE> --vault=...`.
-- The allowlist globs are exact-ish; if a command still prompts, standardize the argument order and add a matching rule.
-
-### "Only the Claude Code vault, always"
-- The Service Account is scoped at creation time in `my.1password.com`. It physically cannot list other vaults, even with a broad allowlist.
-
-### Permission rules take effect immediately
-- `settings.json` is watched and reloaded live (no restart needed for permission/env changes) — though a new session is safest.
+**Cons**
+- ⚠️ The Service Account is scoped to **one vault** — it can't reach your other vaults (a feature, but a limitation if you need more)
+- ⚠️ The allowlist globs are brittle to argument order
+- ⚠️ Config can be clobbered by other tooling (CC Switch) if you only use `settings.json`
+- ⚠️ A leaked token = full read/write to that one vault — **rotate promptly on any exposure**
+- ⚠️ If you fall back to desktop-app auth, the **12-hour/10-min Touch ID limits are unavoidable**
 
 ---
 
 ## Security notes
 
-- **Never commit `settings.json`** with a live token. Use env vars / secret managers in CI instead.
-- **Rotate on exposure**: if a token appears in a chat log, screen recording, or untrusted repo, rotate it at <https://my.1password.com> (Service Accounts → revoke → recreate).
-- **`1password-credentials.json`** is the account-recovery file. It can reset your whole account. Keep it local, never share.
-- The allowlist above grants `op` write access to the `Claude Code` vault *by design* so Claude can store newly-issued keys. Scope the Service Account to that one vault to contain blast radius.
-- Prefer **read-only** patterns in automation: only `create`/`edit` when the workflow genuinely needs to store something.
+- **Never commit `settings.json`** with a live token.
+- **Rotate on exposure**: any token that touched a chat log / screenshot / untrusted repo → revoke & recreate at <https://my.1password.com>.
+- **`1password-credentials.json`** (account recovery file) can reset your *entire* account. Keep local, never share.
+- Scope the Service Account to exactly one vault to contain blast radius.
+- Prefer **read-only** patterns in automation; only `create`/`edit` when you genuinely store something.
 
 ---
 
 ## Credential index (template)
 
-Use this in your README or team wiki to map what lives where. Replace values — do **not** put real secrets in a repo.
-
-| Item | Category | Field to use | Example purpose |
+| Item | Category | Field | Example |
 |---|---|---|---|
-| `<device>` login | `login` | `username` / `password` | Router / NAS / server SSH login |
-| `<cloud>` API token | `API Credential` | `credential` | Cloud provider API key |
-| `<LLM>` key | `API Credential` | `credential` | DeepSeek / Qwen / Kimi / etc. |
-| `<SSH>` private key | `API Credential` | `credential` (full PEM) | SSH into a box |
-| Service Account token | `API Credential` | `credential` | The `ops_...` token above |
+| Device login | `login` | `username` / `password` | Router / NAS |
+| Cloud API token | `API Credential` | `credential` | Cloud provider |
+| LLM key | `API Credential` | `credential` | DeepSeek / Qwen |
+| SSH private key | `SSH Key` | `private_key` | SSH into a box |
+| Service Account token | `API Credential` | `credential` | The `ops_...` token |
 
 ---
 
 ## License
 
-MIT — this is a documentation/template repo. No 1Password code or secrets included.
+MIT — documentation/template only. No 1Password code or secrets.
